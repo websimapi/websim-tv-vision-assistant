@@ -52,6 +52,8 @@
             max-width: 600px;
             height: auto;
             display: none;
+            transform-origin: center;
+            transition: transform 0.3s ease;
         }
         
         .camera-placeholder {
@@ -211,27 +213,151 @@
             font-style: italic;
         }
         
+        .zoom-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 12px;
+            border-radius: 25px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .zoom-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            padding: 0;
+            min-width: auto;
+            box-shadow: none;
+        }
+        
+        .zoom-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: none;
+        }
+        
+        #zoomLevel {
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+            min-width: 40px;
+        }
+        
         @media (max-width: 768px) {
-            h1 {
-                font-size: 2rem;
+            body {
+                padding: 0;
+                background: #000;
             }
             
-            .buttons {
+            .container {
+                max-width: 100%;
+                height: 100vh;
+                display: flex;
                 flex-direction: column;
-                align-items: center;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+                margin: 10px 20px;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+                margin: 0 20px 10px;
+            }
+            
+            .camera-container {
+                flex: 1;
+                margin: 0;
+                border-radius: 0;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            #video {
+                width: 100%;
+                height: 100%;
+                max-width: none;
+                object-fit: cover;
+            }
+            
+            .camera-placeholder {
+                height: 100%;
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .zoom-controls {
+                display: flex;
+            }
+            
+            .mobile-overlay {
+                position: absolute;
+                z-index: 10;
+                background: rgba(0,0,0,0.8);
+                backdrop-filter: blur(10px);
+                border-radius: 15px;
+                margin: 10px;
+            }
+            
+            .controls.mobile-overlay {
+                top: 80px;
+                left: 0;
+                right: 0;
+            }
+            
+            .buttons.mobile-overlay {
+                bottom: 120px;
+                left: 0;
+                right: 0;
+                flex-direction: row;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            
+            .status.mobile-overlay {
+                bottom: 60px;
+                left: 0;
+                right: 0;
+                margin: 10px;
+            }
+            
+            .description.mobile-overlay {
+                bottom: 0;
+                left: 0;
+                right: 0;
+                min-height: 60px;
+                margin: 0;
+                border-radius: 0;
             }
             
             button {
-                width: 100%;
-                max-width: 280px;
+                width: auto;
+                max-width: none;
+                padding: 12px 20px;
+                font-size: 1rem;
             }
             
             .interval-controls {
-                flex-direction: column;
+                flex-direction: row;
             }
             
             input[type="range"] {
-                min-width: 250px;
+                min-width: 150px;
             }
         }
     </style>
@@ -246,9 +372,14 @@
             <div id="cameraPlaceholder" class="camera-placeholder">
                 📷 Camera will appear here
             </div>
+            <div class="zoom-controls">
+                <button id="zoomOut" class="zoom-btn">−</button>
+                <span id="zoomLevel">1.0x</span>
+                <button id="zoomIn" class="zoom-btn">+</button>
+            </div>
         </div>
         
-        <div class="controls">
+        <div class="controls mobile-overlay">
             <div class="control-group">
                 <label>Analysis Frequency</label>
                 <div class="interval-controls">
@@ -260,17 +391,17 @@
             </div>
         </div>
         
-        <div class="buttons">
+        <div class="buttons mobile-overlay">
             <button id="startCamera" class="primary-btn">Start Camera</button>
             <button id="toggleAnalysis" class="success-btn" disabled>Start Analysis</button>
             <button id="analyzeNow" class="secondary-btn" disabled>Analyze Now</button>
         </div>
         
-        <div id="status" class="status inactive">
+        <div id="status" class="status inactive mobile-overlay">
             Ready to start
         </div>
         
-        <div id="description" class="description empty">
+        <div id="description" class="description empty mobile-overlay">
             Analysis results will appear here...
         </div>
     </div>
@@ -281,6 +412,7 @@
         let analysisInterval;
         let isAnalyzing = false;
         let currentInterval = 5;
+        let currentZoom = 1;
         
         // DOM elements
         const startCameraBtn = document.getElementById('startCamera');
@@ -291,10 +423,30 @@
         const intervalSlider = document.getElementById('intervalSlider');
         const intervalDisplay = document.getElementById('intervalDisplay');
         const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+        const zoomInBtn = document.getElementById('zoomIn');
+        const zoomOutBtn = document.getElementById('zoomOut');
+        const zoomLevelSpan = document.getElementById('zoomLevel');
+        const zoomControls = document.querySelector('.zoom-controls');
         
         // Initialize
         video = document.getElementById('video');
         canvas = document.createElement('canvas');
+        
+        // Zoom controls
+        zoomInBtn.addEventListener('click', () => {
+            currentZoom = Math.min(currentZoom + 0.2, 3);
+            updateZoom();
+        });
+        
+        zoomOutBtn.addEventListener('click', () => {
+            currentZoom = Math.max(currentZoom - 0.2, 0.5);
+            updateZoom();
+        });
+        
+        function updateZoom() {
+            video.style.transform = `scale(${currentZoom})`;
+            zoomLevelSpan.textContent = `${currentZoom.toFixed(1)}x`;
+        }
         
         // Interval slider
         intervalSlider.addEventListener('input', (e) => {
@@ -322,6 +474,7 @@
                 video.srcObject = stream;
                 video.style.display = 'block';
                 cameraPlaceholder.style.display = 'none';
+                zoomControls.style.display = 'flex';
                 
                 startCameraBtn.disabled = true;
                 toggleAnalysisBtn.disabled = false;
@@ -463,4 +616,3 @@
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
-
