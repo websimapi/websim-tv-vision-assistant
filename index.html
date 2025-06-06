@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV Vision Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .camera-container {
+            position: relative;
+            margin: 20px 0;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        #video {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            display: none;
+        }
+        
+        .camera-placeholder {
+            width: 100%;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.1);
+            border: 2px dashed rgba(255,255,255,0.3);
+            margin: 20px 0;
+            border-radius: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .control-group {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .interval-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            min-width: 200px;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        
+        .interval-display {
+            font-size: 1.3rem;
+            font-weight: bold;
+            min-width: 80px;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .primary-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+        
+        .secondary-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .success-btn {
+            background: linear-gradient(45deg, #00d2d3, #54a0ff);
+            color: white;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .status.active {
+            background: rgba(76, 217, 100, 0.2);
+            border: 1px solid rgba(76, 217, 100, 0.5);
+        }
+        
+        .status.inactive {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .description {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 1.1rem;
+            line-height: 1.6;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .description.empty {
+            opacity: 0.7;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            button {
+                width: 100%;
+                max-width: 280px;
+            }
+            
+            .interval-controls {
+                flex-direction: column;
+            }
+            
+            input[type="range"] {
+                min-width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📺 TV Vision Assistant</h1>
+        <p class="subtitle">Point your camera at the TV and I'll tell you what's happening!</p>
+        
+        <div class="camera-container">
+            <video id="video" autoplay playsinline></video>
+            <div id="cameraPlaceholder" class="camera-placeholder">
+                📷 Camera will appear here
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>Analysis Frequency</label>
+                <div class="interval-controls">
+                    <span>1s</span>
+                    <input type="range" id="intervalSlider" min="1" max="30" value="5">
+                    <span>30s</span>
+                    <div class="interval-display" id="intervalDisplay">5s</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="buttons">
+            <button id="startCamera" class="primary-btn">Start Camera</button>
+            <button id="toggleAnalysis" class="success-btn" disabled>Start Analysis</button>
+            <button id="analyzeNow" class="secondary-btn" disabled>Analyze Now</button>
+        </div>
+        
+        <div id="status" class="status inactive">
+            Ready to start
+        </div>
+        
+        <div id="description" class="description empty">
+            Analysis results will appear here...
+        </div>
+    </div>
+
+    <script>
+        let video;
+        let canvas;
+        let analysisInterval;
+        let isAnalyzing = false;
+        let currentInterval = 5;
+        
+        // DOM elements
+        const startCameraBtn = document.getElementById('startCamera');
+        const toggleAnalysisBtn = document.getElementById('toggleAnalysis');
+        const analyzeNowBtn = document.getElementById('analyzeNow');
+        const statusDiv = document.getElementById('status');
+        const descriptionDiv = document.getElementById('description');
+        const intervalSlider = document.getElementById('intervalSlider');
+        const intervalDisplay = document.getElementById('intervalDisplay');
+        const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+        
+        // Initialize
+        video = document.getElementById('video');
+        canvas = document.createElement('canvas');
+        
+        // Interval slider
+        intervalSlider.addEventListener('input', (e) => {
+            currentInterval = parseInt(e.target.value);
+            intervalDisplay.textContent = `${currentInterval}s`;
+            
+            // If currently analyzing, restart with new interval
+            if (isAnalyzing) {
+                stopAnalysis();
+                startAnalysis();
+            }
+        });
+        
+        // Camera setup
+        startCameraBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                
+                video.srcObject = stream;
+                video.style.display = 'block';
+                cameraPlaceholder.style.display = 'none';
+                
+                startCameraBtn.disabled = true;
+                toggleAnalysisBtn.disabled = false;
+                analyzeNowBtn.disabled = false;
+                
+                updateStatus('Camera ready - point at your TV', 'active');
+                
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                updateStatus('Camera access denied. Please allow camera permission.', 'inactive');
+            }
+        });
+        
+        // Analysis controls
+        toggleAnalysisBtn.addEventListener('click', () => {
+            if (isAnalyzing) {
+                stopAnalysis();
+            } else {
+                startAnalysis();
+            }
+        });
+        
+        analyzeNowBtn.addEventListener('click', () => {
+            analyzeFrame();
+        });
+        
+        function startAnalysis() {
+            isAnalyzing = true;
+            toggleAnalysisBtn.textContent = 'Stop Analysis';
+            toggleAnalysisBtn.className = 'primary-btn';
+            updateStatus(`Analyzing every ${currentInterval} seconds...`, 'active');
+            
+            // Start immediate analysis
+            analyzeFrame();
+            
+            // Set up interval
+            analysisInterval = setInterval(() => {
+                analyzeFrame();
+            }, currentInterval * 1000);
+        }
+        
+        function stopAnalysis() {
+            isAnalyzing = false;
+            toggleAnalysisBtn.textContent = 'Start Analysis';
+            toggleAnalysisBtn.className = 'success-btn';
+            updateStatus('Analysis stopped', 'inactive');
+            
+            if (analysisInterval) {
+                clearInterval(analysisInterval);
+                analysisInterval = null;
+            }
+        }
+        
+        async function analyzeFrame() {
+            if (!video.srcObject) return;
+            
+            try {
+                // Update status to show we're analyzing
+                const originalStatus = statusDiv.textContent;
+                updateStatus('📸 Analyzing TV content...', 'active');
+                
+                // Capture frame
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+                
+                const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                
+                // Send to AI for analysis
+                const completion = await websim.chat.completions.create({
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                {
+                                    type: "text",
+                                    text: `Please describe what's happening on this TV screen. Focus on:
+                                    - What type of content it is (movie, show, news, commercial, etc.)
+                                    - Main action or events occurring
+                                    - Key characters or people visible
+                                    - Any text or graphics shown
+                                    - Overall scene or setting
+                                    
+                                    Keep the description clear and concise for someone who can't see the screen well. If you can't clearly see a TV screen in the image, mention that.`
+                                },
+                                {
+                                    type: "image_url",
+                                    image_url: { url: imageDataUrl }
+                                }
+                            ]
+                        }
+                    ]
+                });
+                
+                const description = completion.content;
+                updateDescription(description);
+                
+                // Read the description aloud
+                try {
+                    const ttsResult = await websim.textToSpeech({
+                        text: description,
+                        voice: "en-female"
+                    });
+                    
+                    const audio = new Audio(ttsResult.url);
+                    audio.play();
+                } catch (ttsError) {
+                    console.error('Text-to-speech error:', ttsError);
+                }
+                
+                // Restore original status or update with analysis info
+                if (isAnalyzing) {
+                    updateStatus(`✅ Analysis complete - next in ${currentInterval}s`, 'active');
+                } else {
+                    updateStatus('Analysis complete', 'active');
+                }
+                
+            } catch (error) {
+                console.error('Analysis error:', error);
+                updateStatus('❌ Analysis failed - please try again', 'inactive');
+                updateDescription('Sorry, I couldn\'t analyze the TV content. Please make sure the camera is pointing at the TV screen and try again.');
+            }
+        }
+        
+        function updateStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        function updateDescription(text) {
+            descriptionDiv.textContent = text;
+            descriptionDiv.className = 'description';
+        }
+        
+        // Initialize interval display
+        intervalDisplay.textContent = `${currentInterval}s`;
+    </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+
