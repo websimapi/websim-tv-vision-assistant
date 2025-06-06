@@ -381,6 +381,15 @@
         
         <div class="controls mobile-overlay">
             <div class="control-group">
+                <label>Camera Zoom</label>
+                <div class="interval-controls">
+                    <span>0.5x</span>
+                    <input type="range" id="zoomSlider" min="0.5" max="3" step="0.1" value="1">
+                    <span>3x</span>
+                    <div class="interval-display" id="zoomSliderDisplay">1.0x</div>
+                </div>
+            </div>
+            <div class="control-group">
                 <label>Analysis Frequency</label>
                 <div class="interval-controls">
                     <span>1s</span>
@@ -427,6 +436,8 @@
         const zoomOutBtn = document.getElementById('zoomOut');
         const zoomLevelSpan = document.getElementById('zoomLevel');
         const zoomControls = document.querySelector('.zoom-controls');
+        const zoomSlider = document.getElementById('zoomSlider');
+        const zoomSliderDisplay = document.getElementById('zoomSliderDisplay');
         
         // Initialize
         video = document.getElementById('video');
@@ -446,6 +457,42 @@
         function updateZoom() {
             video.style.transform = `scale(${currentZoom})`;
             zoomLevelSpan.textContent = `${currentZoom.toFixed(1)}x`;
+            zoomSliderDisplay.textContent = `${currentZoom.toFixed(1)}x`;
+            zoomSlider.value = currentZoom;
+        }
+        
+        // Zoom slider control
+        zoomSlider.addEventListener('input', (e) => {
+            currentZoom = parseFloat(e.target.value);
+            updateZoom();
+        });
+        
+        // Pinch to zoom for mobile
+        let initialDistance = 0;
+        let initialZoom = 1;
+        
+        video.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                initialDistance = getDistance(e.touches[0], e.touches[1]);
+                initialZoom = currentZoom;
+            }
+        });
+        
+        video.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const currentDistance = getDistance(e.touches[0], e.touches[1]);
+                const scale = currentDistance / initialDistance;
+                currentZoom = Math.min(Math.max(initialZoom * scale, 0.5), 3);
+                updateZoom();
+            }
+        });
+        
+        function getDistance(touch1, touch2) {
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
         }
         
         // Interval slider
